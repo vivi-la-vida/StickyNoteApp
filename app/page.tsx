@@ -38,21 +38,6 @@ const NOTE_COLORS_MED: Record<NoteColor, string> = {
 
 const CATEGORY_COLORS: NoteColor[] = ["yellow", "pink", "blue", "green", "lavender"];
 
-const INITIAL_NOTES: Note[] = [
-  { id: "1", text: "Build a cozy story-driven game about memories and healing.", color: "yellow", category: "Game Design", createdAt: 1 },
-  { id: "2", text: "Time-loop mechanic tied to emotional closure.", color: "yellow", category: "Game Design", createdAt: 2 },
-  { id: "3", text: "Collectible memory fragments scattered across levels.", color: "yellow", category: "Game Design", createdAt: 3 },
-  { id: "4", text: "The brother is the glue that holds the family together.", color: "pink", category: "Story", createdAt: 4 },
-  { id: "5", text: "Childhood memories influence the present.", color: "pink", category: "Story", createdAt: 5 },
-  { id: "6", text: "Explore the theme of things left unsaid.", color: "pink", category: "Story", createdAt: 6 },
-  { id: "7", text: "Watercolor-washed UI that feels like a journal.", color: "blue", category: "Art Direction", createdAt: 7 },
-  { id: "8", text: "Soft ambient lighting shifts with emotional tone.", color: "blue", category: "Art Direction", createdAt: 8 },
-  { id: "9", text: "Ambient sounds tied to memory locations.", color: "green", category: "Mechanics", createdAt: 9 },
-  { id: "10", text: "Journal entries unlock hidden paths.", color: "green", category: "Mechanics", createdAt: 10 },
-  { id: "11", text: "Main character has fragments of lost memory.", color: "lavender", category: "Characters", createdAt: 11 },
-  { id: "12", text: "Draw inspiration from Studio Ghibli's quiet moments.", color: "yellow", category: "Inspiration", createdAt: 12 },
-];
-
 function getCategories(notes: Note[]): string[] {
   return Array.from(new Set(notes.map((n) => n.category)));
 }
@@ -622,7 +607,7 @@ function Sidebar({
 // ── Main canvas ────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [notes, setNotes] = useState<Note[]>(INITIAL_NOTES);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [stackNote, setStackNote] = useState<{ category: string; index: number } | null>(null);
