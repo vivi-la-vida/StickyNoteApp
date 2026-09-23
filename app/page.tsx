@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   NOTE_COLORS,
   NOTE_COLORS_DARK,
+  ChecklistContent,
   StickyNote,
   type Note,
   type NoteColor,
@@ -91,10 +92,11 @@ function AddNoteModal({
 }: {
   categories: string[];
   defaultCategory: string | null;
-  onSave: (text: string, color: NoteColor, category: string) => void;
+  onSave: (text: string, color: NoteColor, category: string, checklist: boolean) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
+  const [checklist, setChecklist] = useState(false);
   const [color, setColor] = useState<NoteColor>("yellow");
   const [category, setCategory] = useState(defaultCategory || categories[0] || "General");
   const [newCat, setNewCat] = useState("");
@@ -105,7 +107,7 @@ function AddNoteModal({
 
   const handleSave = () => {
     const finalCat = category === "__new__" ? (newCat.trim() || "General") : category;
-    if (text.trim()) onSave(text.trim(), color, finalCat);
+    if (text.trim()) onSave(text.trim(), color, finalCat, checklist);
   };
 
   return (
@@ -148,6 +150,11 @@ function AddNoteModal({
           className="mx-6 mb-4 bg-transparent resize-none focus:outline-none text-2xl leading-relaxed text-stone-700 placeholder-stone-400"
           style={{ fontFamily: "var(--font-sketch)" }}
         />
+
+        <label className="flex items-center gap-2 px-6 pb-4 text-stone-600" style={{ fontFamily: "var(--font-body)" }}>
+          <input type="checkbox" checked={checklist} onChange={(e) => setChecklist(e.target.checked)} />
+          Use as checklist
+        </label>
 
         {/* Category row */}
         <div className="px-6 pb-4">
@@ -223,6 +230,7 @@ function StackOverlay({
   onClose,
   onDelete,
   onEditNote,
+  onToggleChecklistItem,
 }: {
   category: string;
   notes: Note[];
@@ -230,6 +238,7 @@ function StackOverlay({
   onClose: () => void;
   onDelete: (id: string) => void;
   onEditNote: (id: string, text: string) => void;
+  onToggleChecklistItem: (id: string, index: number) => void;
 }) {
   const [index, setIndex] = useState(startIndex);
   const [flipping, setFlipping] = useState(false);
@@ -339,7 +348,9 @@ function StackOverlay({
             ) : (
               <div className="flex-1 flex flex-col" onClick={() => !flipping && flip("next")} style={{ cursor: index < total - 1 ? "pointer" : "default" }}>
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-2xl leading-relaxed text-stone-700 flex-1">{note.text}</p>
+                  <div className="text-2xl leading-relaxed text-stone-700 flex-1">
+                    <ChecklistContent note={note} onToggle={(itemIndex) => onToggleChecklistItem(note.id, itemIndex)} className="text-2xl" />
+                  </div>
                   <button onClick={(e) => { e.stopPropagation(); startEdit(); }} className="shrink-0 opacity-30 hover:opacity-70 transition-opacity mt-0.5">
                     <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
                       <path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="#4a3a1a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -491,8 +502,8 @@ export default function App() {
     ? notes.filter((n) => n.category === selectedCategory)
     : notes;
 
-  const handleSave = (text: string, color: NoteColor, category: string) => {
-    setNotes((prev) => [...prev, { id: Date.now().toString(), text, color, category, createdAt: Date.now() }]);
+  const handleSave = (text: string, color: NoteColor, category: string, checklist: boolean) => {
+    setNotes((prev) => [...prev, { id: Date.now().toString(), text, color, category, createdAt: Date.now(), checklist, checkedItems: checklist ? text.split("\n").map(() => false) : undefined }]);
     setShowAddModal(false);
   };
 
@@ -501,7 +512,15 @@ export default function App() {
   };
 
   const handleEdit = (id: string, text: string) => {
-    setNotes((prev) => prev.map((n) => n.id === id ? { ...n, text } : n));
+    setNotes((prev) => prev.map((note) => note.id === id
+      ? { ...note, text, checkedItems: note.checklist ? text.split("\n").map((_, index) => note.checkedItems?.[index] ?? false) : undefined }
+      : note));
+  };
+
+  const handleToggleChecklistItem = (id: string, index: number) => {
+    setNotes((prev) => prev.map((note) => note.id === id
+      ? { ...note, checkedItems: note.checkedItems?.map((checked, itemIndex) => itemIndex === index ? !checked : checked) }
+      : note));
   };
 
   const handleRenameCategory = (oldName: string, newName: string) => {
@@ -625,6 +644,7 @@ export default function App() {
                   note={note}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onToggleChecklistItem={handleToggleChecklistItem}
                   onOpenStack={() => {
                     setStackNote({ category: note.category, index: notes.filter(n => n.category === note.category).findIndex(n => n.id === note.id) });
                   }}
@@ -642,6 +662,7 @@ export default function App() {
               notes={visibleNotes}
               onDelete={handleDelete}
               onEditNote={handleEdit}
+              onToggleChecklistItem={handleToggleChecklistItem}
             />
           )}
         </div>
@@ -665,6 +686,7 @@ export default function App() {
           onClose={() => setStackNote(null)}
           onDelete={(id) => { handleDelete(id); }}
           onEditNote={handleEdit}
+          onToggleChecklistItem={handleToggleChecklistItem}
         />
       )}
     </div>
@@ -677,10 +699,12 @@ function StackInline({
   notes,
   onDelete,
   onEditNote,
+  onToggleChecklistItem,
 }: {
   notes: Note[];
   onDelete: (id: string) => void;
   onEditNote: (id: string, text: string) => void;
+  onToggleChecklistItem: (id: string, index: number) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [flipping, setFlipping] = useState(false);
@@ -763,7 +787,9 @@ function StackInline({
           ) : (
             <div className="flex-1 flex flex-col" onClick={() => !flipping && flip("next")} style={{ cursor: safeIndex < total - 1 ? "pointer" : "default" }}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-2xl leading-relaxed text-stone-700 flex-1">{note.text}</p>
+                <div className="text-2xl leading-relaxed text-stone-700 flex-1">
+                  <ChecklistContent note={note} onToggle={(itemIndex) => onToggleChecklistItem(note.id, itemIndex)} className="text-2xl" />
+                </div>
                 <button onClick={(e) => { e.stopPropagation(); setDraft(note.text); setEditingText(true); }}
                   className="shrink-0 opacity-30 hover:opacity-70 transition-opacity mt-0.5">
                   <svg width="15" height="15" viewBox="0 0 14 14" fill="none">

@@ -10,6 +10,8 @@ export interface Note {
   color: NoteColor;
   category: string;
   createdAt: number;
+  checklist?: boolean;
+  checkedItems?: boolean[];
 }
 
 export const NOTE_COLORS: Record<NoteColor, string> = {
@@ -28,10 +30,42 @@ export const NOTE_COLORS_DARK: Record<NoteColor, string> = {
   lavender: "#A566FF",
 };
 
+export function ChecklistContent({
+  note,
+  onToggle,
+  className = "text-lg",
+}: {
+  note: Note;
+  onToggle?: (index: number) => void;
+  className?: string;
+}) {
+  if (!note.checklist) return <>{note.text}</>;
+
+  return (
+    <span className={`flex flex-col gap-2 ${className}`}>
+      {note.text.split("\n").map((item, index) => (
+        <span key={`${item}-${index}`} className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onToggle?.(index); }}
+            className="mt-1.5 w-4 h-4 shrink-0 rounded border-2 border-stone-600/50 flex items-center justify-center"
+            style={{ background: note.checkedItems?.[index] ? "rgba(74,58,26,0.35)" : "transparent" }}
+            aria-label={note.checkedItems?.[index] ? "Mark incomplete" : "Mark complete"}
+          >
+            {note.checkedItems?.[index] && <span className="text-xs leading-none">✓</span>}
+          </button>
+          <span className={note.checkedItems?.[index] ? "line-through opacity-60" : ""}>{item}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function StickyNote({
   note,
   onEdit,
   onDelete,
+  onToggleChecklistItem,
   onOpenStack,
   isDragOver,
   onDragStart,
@@ -42,6 +76,7 @@ export function StickyNote({
   note: Note;
   onEdit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
+  onToggleChecklistItem: (id: string, index: number) => void;
   onOpenStack: () => void;
   isDragOver: boolean;
   onDragStart: () => void;
@@ -127,7 +162,7 @@ export function StickyNote({
             style={{ fontFamily: "var(--font-sketch)" }}
             onClick={onOpenStack}
           >
-            {note.text}
+            <ChecklistContent note={note} onToggle={(index) => onToggleChecklistItem(note.id, index)} />
           </p>
         )}
       </div>
