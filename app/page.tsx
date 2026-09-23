@@ -85,29 +85,21 @@ function EditableTitle({
 // ── Add Note Modal ─────────────────────────────────────────────────────────────
 
 function AddNoteModal({
-  categories,
-  defaultCategory,
   onSave,
   onClose,
 }: {
-  categories: string[];
-  defaultCategory: string | null;
-  onSave: (text: string, color: NoteColor, category: string, checklist: boolean) => void;
+  onSave: (text: string, color: NoteColor, checklist: boolean) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
   const [checklist, setChecklist] = useState(false);
   const [color, setColor] = useState<NoteColor>("yellow");
-  const [category, setCategory] = useState(defaultCategory || categories[0] || "General");
-  const [newCat, setNewCat] = useState("");
-  const [addingCat, setAddingCat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { textareaRef.current?.focus(); }, []);
 
   const handleSave = () => {
-    const finalCat = category === "__new__" ? (newCat.trim() || "General") : category;
-    if (text.trim()) onSave(text.trim(), color, finalCat, checklist);
+    if (text.trim()) onSave(text.trim(), color, checklist);
   };
 
   return (
@@ -155,51 +147,6 @@ function AddNoteModal({
           <input type="checkbox" checked={checklist} onChange={(e) => setChecklist(e.target.checked)} />
           Use as checklist
         </label>
-
-        {/* Category row */}
-        <div className="px-6 pb-4">
-          <p className="text-xs text-stone-500 mb-2 uppercase tracking-widest" style={{ fontFamily: "var(--font-body)", fontSize: 10 }}>
-            Category
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => { setCategory(cat); setAddingCat(false); }}
-                className="px-3 py-1 rounded-full text-sm transition-all"
-                style={{
-                  fontFamily: "var(--font-sketch)", fontSize: 15,
-                  background: category === cat ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.06)",
-                  color: category === cat ? "#3a2e1a" : "#7a6a50",
-                  border: category === cat ? "2px solid rgba(0,0,0,0.2)" : "2px solid transparent",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-            <button
-              onClick={() => { setAddingCat(true); setCategory("__new__"); }}
-              className="px-3 py-1 rounded-full text-sm transition-all"
-              style={{
-                fontFamily: "var(--font-sketch)", fontSize: 15,
-                color: "#aaa", border: "2px dashed rgba(0,0,0,0.15)",
-                background: category === "__new__" ? "rgba(0,0,0,0.06)" : "transparent",
-              }}
-            >
-              + New
-            </button>
-          </div>
-          {addingCat && (
-            <input
-              autoFocus
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-              placeholder="Category name..."
-              className="mt-2 w-full px-3 py-1.5 rounded-xl text-lg focus:outline-none bg-white/40"
-              style={{ fontFamily: "var(--font-sketch)", color: "#4a3a1a" }}
-            />
-          )}
-        </div>
 
         {/* Save button */}
         <div className="px-6 pb-5">
@@ -487,7 +434,7 @@ function Sidebar({
 
 // ── Main canvas ────────────────────────────────────────────────────────────────
 
-export default function App() {
+function LegacyApp() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -643,7 +590,6 @@ export default function App() {
                   key={note.id}
                   note={note}
                   onEdit={handleEdit}
-                  onDelete={handleDelete}
                   onToggleChecklistItem={handleToggleChecklistItem}
                   onOpenStack={() => {
                     setStackNote({ category: note.category, index: notes.filter(n => n.category === note.category).findIndex(n => n.id === note.id) });
@@ -671,9 +617,7 @@ export default function App() {
       {/* Modals */}
       {showAddModal && (
         <AddNoteModal
-          categories={categories.length > 0 ? categories : ["General"]}
-          defaultCategory={selectedCategory}
-          onSave={handleSave}
+          onSave={(text, color, checklist) => handleSave(text, color, "General", checklist)}
           onClose={() => setShowAddModal(false)}
         />
       )}
@@ -827,6 +771,78 @@ function StackInline({
           style={{ background: "#EDE7DA" }}>→</button>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+
+  const handleSave = (text: string, color: NoteColor, checklist: boolean) => {
+    setNotes((previous) => [...previous, {
+      id: Date.now().toString(),
+      text,
+      color,
+      category: "General",
+      createdAt: Date.now(),
+      checklist,
+      checkedItems: checklist ? text.split("\n").map(() => false) : undefined,
+    }]);
+    setShowAddModal(false);
+  };
+
+  const handleEdit = (id: string, text: string) => {
+    setNotes((previous) => previous.map((note) => note.id === id
+      ? { ...note, text, checkedItems: note.checklist ? text.split("\n").map((_, index) => note.checkedItems?.[index] ?? false) : undefined }
+      : note));
+  };
+
+  const handleToggleChecklistItem = (id: string, index: number) => {
+    setNotes((previous) => previous.map((note) => note.id === id
+      ? { ...note, checkedItems: note.checkedItems?.map((checked, itemIndex) => itemIndex === index ? !checked : checked) }
+      : note));
+  };
+
+  return (
+    <main className="relative h-full min-h-0 w-full overflow-hidden" style={{ background: "#d2d4d6", fontFamily: "var(--font-sketch)" }}>
+      <button
+        type="button"
+        onClick={() => setShowAddModal(true)}
+        className="absolute right-6 top-6 z-10 flex h-12 w-12 items-center justify-center rounded-full text-3xl text-stone-700 shadow-md transition-transform hover:scale-105 active:scale-95"
+        style={{ background: "#f1f2f3" }}
+        title="Add note"
+        aria-label="Add note"
+      >+</button>
+
+      <div className="h-full overflow-y-auto px-6 pb-28 pt-24 sm:px-10">
+        {notes.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-stone-500">
+            <p className="text-xl">Add a note to begin</p>
+          </div>
+        ) : (
+          <div className="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {notes.map((note) => (
+              <StickyNote
+                key={note.id}
+                note={note}
+                onEdit={handleEdit}
+                onDelete={(id) => setNotes((previous) => previous.filter((item) => item.id !== id))}
+                onToggleChecklistItem={handleToggleChecklistItem}
+                onOpenStack={() => undefined}
+                isDragOver={false}
+                onDragStart={() => setDragging(note.id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => setDragging(null)}
+                onDragEnd={() => setDragging(null)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showAddModal && <AddNoteModal onSave={handleSave} onClose={() => setShowAddModal(false)} />}
+    </main>
   );
 }
 

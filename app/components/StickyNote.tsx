@@ -66,6 +66,8 @@ export function StickyNote({
   onEdit,
   onDelete,
   onToggleChecklistItem,
+  onSelect,
+  isSelected,
   onOpenStack,
   isDragOver,
   onDragStart,
@@ -75,8 +77,10 @@ export function StickyNote({
 }: {
   note: Note;
   onEdit: (id: string, text: string) => void;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
   onToggleChecklistItem: (id: string, index: number) => void;
+  onSelect?: () => void;
+  isSelected?: boolean;
   onOpenStack: () => void;
   isDragOver: boolean;
   onDragStart: () => void;
@@ -102,11 +106,14 @@ export function StickyNote({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onClick={onSelect}
       className="rounded-2xl flex flex-col group transition-all duration-150"
       style={{
         background: NOTE_COLORS[note.color],
         boxShadow: isDragOver
           ? `0 0 0 3px ${NOTE_COLORS_DARK[note.color]}, 3px 5px 14px rgba(0,0,0,0.15)`
+          : isSelected
+          ? `0 0 0 3px ${NOTE_COLORS_DARK[note.color]}, 3px 5px 14px rgba(0,0,0,0.1)`
           : "3px 5px 14px rgba(0,0,0,0.1)",
         cursor: editing ? "default" : "grab",
         opacity: 1,
@@ -120,19 +127,25 @@ export function StickyNote({
             </div>
           ))}
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1">
           <button
             onClick={() => { setDraft(note.text); setEditing(true); }}
             className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors"
+            title="Edit note"
+            aria-label="Edit note"
           >
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
               <path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="#4a3a1a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button
-            onClick={() => onDelete(note.id)}
-            className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors text-stone-600 text-xs leading-none"
-          >X</button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(note.id)}
+              className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors text-stone-600 text-xs leading-none"
+              title="Delete note"
+              aria-label="Delete note"
+            >X</button>
+          )}
         </div>
       </div>
 
