@@ -1,184 +1,145 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export type NoteColor = "yellow" | "pink" | "blue" | "green" | "lavender";
+export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
+export type NoteMode = "type" | "draw";
 
 export interface Note {
   id: string;
-  text: string;
   color: NoteColor;
-  category: string;
-  createdAt: number;
-  checklist?: boolean;
-  checkedItems?: boolean[];
+  content: string;
+  drawingData?: string;
+  mode: NoteMode;
+  x: number;
+  y: number;
+  rotation: number;
+  magnetColor: string;
 }
 
 export const NOTE_COLORS: Record<NoteColor, string> = {
-  yellow: "#FDED8B",
-  pink: "#FFB3C6",
-  blue: "#B3D9FF",
-  green: "#B3F0C8",
-  lavender: "#D4B3FF",
+  yellow: "#FFF176", pink: "#FFCDD2", blue: "#BBDEFB",
+  green: "#C8E6C9", purple: "#E1BEE7", orange: "#FFE0B2",
 };
 
-export const NOTE_COLORS_DARK: Record<NoteColor, string> = {
-  yellow: "#E8CC3A",
-  pink: "#FF7098",
-  blue: "#5AAEFF",
-  green: "#4DD98A",
-  lavender: "#A566FF",
+export const NOTE_BORDER: Record<NoteColor, string> = {
+  yellow: "#F9A825", pink: "#E57373", blue: "#42A5F5",
+  green: "#66BB6A", purple: "#AB47BC", orange: "#FFA726",
 };
 
-export function ChecklistContent({
-  note,
-  onToggle,
-  className = "text-lg",
-}: {
-  note: Note;
-  onToggle?: (index: number) => void;
-  className?: string;
-}) {
-  if (!note.checklist) return <>{note.text}</>;
-
-  return (
-    <span className={`flex flex-col gap-2 ${className}`}>
-      {note.text.split("\n").map((item, index) => (
-        <span key={`${item}-${index}`} className="flex items-start gap-2">
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); onToggle?.(index); }}
-            className="mt-1.5 w-4 h-4 shrink-0 rounded border-2 border-stone-600/50 flex items-center justify-center"
-            style={{ background: note.checkedItems?.[index] ? "rgba(74,58,26,0.35)" : "transparent" }}
-            aria-label={note.checkedItems?.[index] ? "Mark incomplete" : "Mark complete"}
-          >
-            {note.checkedItems?.[index] && <span className="text-xs leading-none">✓</span>}
-          </button>
-          <span className={note.checkedItems?.[index] ? "line-through opacity-60" : ""}>{item}</span>
-        </span>
-      ))}
-    </span>
-  );
+function Magnet({ color }: { color: string }) {
+  return <div className="absolute -top-3 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white/60 shadow-md" style={{ background: `radial-gradient(circle at 35% 35%, white 0%, ${color} 50%, ${color}cc 100%)` }} />;
 }
 
-export function StickyNote({
-  note,
-  onEdit,
-  onDelete,
-  onToggleChecklistItem,
-  onSelect,
-  isSelected,
-  onOpenStack,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-}: {
+export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMode }: {
   note: Note;
-  onEdit: (id: string, text: string) => void;
-  onDelete?: (id: string) => void;
-  onToggleChecklistItem: (id: string, index: number) => void;
-  onSelect?: () => void;
-  isSelected?: boolean;
-  onOpenStack: () => void;
-  isDragOver: boolean;
-  onDragStart: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
-  onDragEnd: () => void;
+  onDelete: (id: string) => void;
+  onMove: (id: string, x: number, y: number) => void;
+  selected: boolean;
+  onClick: (id: string) => void;
+  deleteMode: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note.text);
-  useEffect(() => setDraft(note.text), [note.text]);
+  const dragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const didMove = useRef(false);
 
-  const commit = () => {
-    const text = draft.trim();
-    if (text && text !== note.text) onEdit(note.id, text);
-    else setDraft(note.text);
-    setEditing(false);
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (deleteMode) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragging.current = true;
+    didMove.current = false;
+    dragOffset.current = { x: event.clientX - note.x, y: event.clientY - note.y };
+    event.stopPropagation();
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return;
+    didMove.current = true;
+    onMove(note.id, event.clientX - dragOffset.current.x, event.clientY - dragOffset.current.y);
+  };
+
+  const handlePointerUp = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (!didMove.current) onClick(note.id);
   };
 
   return (
     <div
-      draggable={!editing}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      onClick={onSelect}
-      className="rounded-2xl flex flex-col group transition-all duration-150"
-      style={{
-        background: NOTE_COLORS[note.color],
-        boxShadow: isDragOver
-          ? `0 0 0 3px ${NOTE_COLORS_DARK[note.color]}, 3px 5px 14px rgba(0,0,0,0.15)`
-          : isSelected
-          ? `0 0 0 3px ${NOTE_COLORS_DARK[note.color]}, 3px 5px 14px rgba(0,0,0,0.1)`
-          : "3px 5px 14px rgba(0,0,0,0.1)",
-        cursor: editing ? "default" : "grab",
-        opacity: 1,
-      }}
+      className="group absolute"
+      style={{ left: note.x, top: note.y, transform: `rotate(${note.rotation}deg)`, zIndex: selected ? 20 : 10, cursor: deleteMode ? "pointer" : "grab", touchAction: "none" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onClick={deleteMode ? () => onClick(note.id) : undefined}
     >
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-30 transition-opacity cursor-grab">
-          {[0, 1, 2].map((row) => (
-            <div key={row} className="flex flex-col gap-[3px]">
-              {[0, 1].map((column) => <div key={column} className="w-[3px] h-[3px] rounded-full bg-stone-700" />)}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => { setDraft(note.text); setEditing(true); }}
-            className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors"
-            title="Edit note"
-            aria-label="Edit note"
-          >
-            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
-              <path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="#4a3a1a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {onDelete && (
-            <button
-              onClick={() => onDelete(note.id)}
-              className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors text-stone-600 text-xs leading-none"
-              title="Delete note"
-              aria-label="Delete note"
-            >X</button>
-          )}
-        </div>
+      <Magnet color={note.magnetColor} />
+      <div
+        className="relative flex h-36 w-36 flex-col p-3 pt-4 shadow-lg transition-shadow duration-150 group-hover:shadow-xl"
+        style={{ background: NOTE_COLORS[note.color], borderBottom: `3px solid ${NOTE_BORDER[note.color]}`, borderRight: `2px solid ${NOTE_BORDER[note.color]}44`, fontFamily: "cursive", boxShadow: selected ? `0 0 0 3px ${NOTE_BORDER[note.color]}, 0 12px 24px rgba(0,0,0,0.2)` : undefined }}
+      >
+        {note.mode === "draw" && note.drawingData ? <img src={note.drawingData} alt="Drawing" className="h-full w-full object-contain" draggable={false} /> : <p className="break-words overflow-hidden text-sm leading-snug text-gray-700">{note.content}</p>}
       </div>
-
-      <div className="flex-1 px-4 pb-4 pt-1">
-        {editing ? (
-          <div className="flex flex-col gap-2">
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commit}
-              rows={4}
-              className="w-full bg-transparent resize-none focus:outline-none text-lg leading-snug text-stone-700"
-              style={{ fontFamily: "var(--font-sketch)" }}
-            />
-            <div className="flex justify-end">
-              <button
-                onMouseDown={(e) => { e.preventDefault(); commit(); }}
-                className="text-xs px-3 py-1 rounded-full font-medium"
-                style={{ fontFamily: "var(--font-body)", background: "rgba(0,0,0,0.1)", color: "#4a3a1a" }}
-              >Done</button>
-            </div>
-          </div>
-        ) : (
-          <p
-            className="text-lg leading-snug text-stone-700 cursor-pointer"
-            style={{ fontFamily: "var(--font-sketch)" }}
-            onClick={onOpenStack}
-          >
-            <ChecklistContent note={note} onToggle={(index) => onToggleChecklistItem(note.id, index)} />
-          </p>
-        )}
-      </div>
+      <button type="button" className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow group-hover:flex" onClick={(event) => { event.stopPropagation(); onDelete(note.id); }} aria-label="Delete note" title="Delete note">x</button>
     </div>
   );
+}
+
+export function DrawingCanvas({ color, onSave }: { color: NoteColor; onSave: (data: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [penSize, setPenSize] = useState(3);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    context.fillStyle = NOTE_COLORS[color];
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }, [color]);
+
+  const position = (event: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
+    const bounds = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / bounds.width;
+    const scaleY = canvas.height / bounds.height;
+    if ("touches" in event) {
+      const touch = event.touches[0] ?? event.changedTouches[0];
+      return { x: (touch.clientX - bounds.left) * scaleX, y: (touch.clientY - bounds.top) * scaleY };
+    }
+    return { x: (event.clientX - bounds.left) * scaleX, y: (event.clientY - bounds.top) * scaleY };
+  };
+
+  const start = (event: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    drawing.current = true;
+    const point = position(event, canvas);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+  };
+
+  const draw = (event: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!drawing.current || !canvas || !context) return;
+    const point = position(event, canvas);
+    context.lineWidth = tool === "eraser" ? penSize * 4 : penSize;
+    context.lineCap = "round";
+    context.strokeStyle = tool === "eraser" ? NOTE_COLORS[color] : "#333";
+    context.lineTo(point.x, point.y);
+    context.stroke();
+  };
+
+  const stop = () => { drawing.current = false; };
+
+  return <div className="flex flex-col gap-3">
+    <canvas ref={canvasRef} width={280} height={240} className="w-full rounded-lg border-2 border-dashed" style={{ borderColor: NOTE_BORDER[color], touchAction: "none", cursor: tool === "eraser" ? "cell" : "crosshair" }} onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex gap-2"><button type="button" onClick={() => setTool("pen")} className={`rounded-lg p-2 text-sm ${tool === "pen" ? "bg-gray-200 shadow-inner" : ""}`} title="Pen">Pen</button><button type="button" onClick={() => setTool("eraser")} className={`rounded-lg p-2 text-sm ${tool === "eraser" ? "bg-gray-200 shadow-inner" : ""}`} title="Eraser">Erase</button></div>
+      <div className="flex items-center gap-2">{[2, 4, 7].map((size) => <button type="button" key={size} onClick={() => setPenSize(size)} className={`rounded-full bg-gray-700 ${penSize === size ? "ring-2 ring-gray-400" : ""}`} style={{ width: size * 3 + 4, height: size * 3 + 4 }} title={`${size}px pen`} />)}</div>
+      <button type="button" className="rounded-xl px-4 py-1.5 text-sm font-bold text-white shadow" style={{ background: NOTE_BORDER[color] }} onClick={() => { if (canvasRef.current) onSave(canvasRef.current.toDataURL()); }}>Paste it!</button>
+    </div>
+  </div>;
 }
