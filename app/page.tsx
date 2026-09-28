@@ -91,9 +91,11 @@ const FRIDGE_LINES = "repeating-linear-gradient(90deg, transparent, transparent 
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [showTrashPanel, setShowTrashPanel] = useState(false);
   const [topZIndexNoteId, setTopZIndexNoteId] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -112,8 +114,21 @@ export default function App() {
   }, []);
 
   const deleteNote = useCallback((id: string) => {
-    setNotes((previous) => previous.filter((note) => note.id !== id));
+    setNotes((previous) => {
+      const deletedNote = previous.find((note) => note.id === id);
+      if (!deletedNote) return previous;
+
+      setDeletedNotes((current) => [deletedNote, ...current.filter((note) => note.id !== id)].slice(0, 3));
+      return previous.filter((note) => note.id !== id);
+    });
+
     setSelected((current) => current === id ? null : current);
+    setTopZIndexNoteId((current) => (current === id ? null : current));
+  }, []);
+
+  const restoreNote = useCallback((note: Note) => {
+    setDeletedNotes((current) => current.filter((deletedNote) => deletedNote.id !== note.id));
+    setNotes((previous) => [...previous, { ...note, x: Math.max(40, Math.min(note.x, 540)), y: Math.max(60, Math.min(note.y, 420)) }]);
   }, []);
 
   const moveNote = useCallback((id: string, x: number, y: number) => {
@@ -172,9 +187,62 @@ export default function App() {
         <div className="relative h-14 w-14"><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#C8E6C9", transform: "rotate(8deg) translate(2px, 3px)" }} /><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#BBDEFB", transform: "rotate(-5deg) translate(-2px, 2px)" }} /><div className="absolute inset-0 flex items-center justify-center rounded-md border-2 shadow-lg" style={{ background: "#FFF176", borderColor: "#F9A825" }}><span className="text-2xl font-bold leading-none text-gray-700">+</span></div></div>
       </button>
 
-      <button type="button" onClick={() => setDeleteMode((active) => !active)} className="absolute bottom-10 right-10 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-110 active:scale-95" style={{ background: deleteMode ? "#EF5350" : "#fff", border: deleteMode ? "2px solid #c62828" : "2px solid #ddd" }} title={deleteMode ? "Click a note to delete it" : "Delete mode"} aria-label="Toggle delete mode">🗑️</button>
+      <button
+        type="button"
+        onClick={() => {
+          setDeleteMode(false);
+          setShowTrashPanel((current) => !current);
+        }}
+        className="absolute bottom-10 right-10 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-110 active:scale-95"
+        style={{ background: showTrashPanel ? "#EF5350" : "#fff", border: showTrashPanel ? "2px solid #c62828" : "2px solid #ddd" }}
+        title="Recently deleted notes"
+        aria-label="Open recently deleted notes"
+      >
+        🗑️
+      </button>
 
-      {deleteMode && <div className="absolute bottom-28 right-4 z-30 rounded-xl bg-red-400 px-3 py-2 text-sm text-white shadow">Click a note to delete it</div>}
+      {showTrashPanel && (
+        <div className="absolute bottom-28 right-4 z-40 w-72 rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-gray-700">Recently deleted</span>
+            <button type="button" onClick={() => setShowTrashPanel(false)} className="text-xl text-gray-400 hover:text-gray-600" aria-label="Close deleted notes">×</button>
+          </div>
+
+          {deletedNotes.length === 0 ? (
+            <p className="text-sm text-gray-500">No recently deleted notes.</p>
+          ) : (
+            <div className="space-y-3">
+              {deletedNotes.map((note) => (
+                <div key={note.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-2">
+                  <div className="h-10 w-10 overflow-hidden rounded-md border border-gray-300 bg-white/80 p-1">
+                    {note.mode === "draw" && note.drawingData ? (
+                      <img src={note.drawingData} alt="Deleted drawing preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-600" style={{ background: NOTE_COLORS[note.color], fontFamily: "cursive" }}>
+                        {note.content.slice(0, 12) || "Note"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-xs font-semibold text-gray-700">{note.mode === "draw" ? "Drawing" : note.content || "Empty note"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      restoreNote(note);
+                      setShowTrashPanel(false);
+                    }}
+                    className="rounded-lg bg-green-500 px-2 py-1 text-xs font-bold text-white shadow hover:bg-green-600"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {showModal && <AddNoteModal onClose={() => setShowModal(false)} onAdd={addNote} />}
       <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_60px_rgba(0,0,0,0.15)]" />
     </div>
