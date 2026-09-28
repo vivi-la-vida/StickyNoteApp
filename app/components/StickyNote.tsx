@@ -83,6 +83,10 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
       <button
         type="button"
         className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow transition-opacity hover:scale-110 group-hover:flex"
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+        }}
         onClick={(event) => {
           event.stopPropagation();
           onDelete(note.id);
