@@ -10,6 +10,7 @@ import {
   type NoteColor,
   type NoteMode,
 } from "./components/StickyNote";
+import { Magnet } from "./components/Magnet";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
 const MAGNET_COLORS = ["#EF5350", "#42A5F5", "#66BB6A", "#FFD54F", "#AB47BC", "#FF7043"];
@@ -90,9 +91,12 @@ const FRIDGE_LINES = "repeating-linear-gradient(90deg, transparent, transparent 
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [showTrashPanel, setShowTrashPanel] = useState(false);
+  const [topZIndexNoteId, setTopZIndexNoteId] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback((partial: Omit<Note, "id" | "x" | "y" | "rotation" | "magnetColor">) => {
@@ -110,8 +114,21 @@ export default function App() {
   }, []);
 
   const deleteNote = useCallback((id: string) => {
-    setNotes((previous) => previous.filter((note) => note.id !== id));
+    setNotes((previous) => {
+      const deletedNote = previous.find((note) => note.id === id);
+      if (!deletedNote) return previous;
+
+      setDeletedNotes((current) => [deletedNote, ...current.filter((note) => note.id !== id)].slice(0, 3));
+      return previous.filter((note) => note.id !== id);
+    });
+
     setSelected((current) => current === id ? null : current);
+    setTopZIndexNoteId((current) => (current === id ? null : current));
+  }, []);
+
+  const restoreNote = useCallback((note: Note) => {
+    setDeletedNotes((current) => current.filter((deletedNote) => deletedNote.id !== note.id));
+    setNotes((previous) => [...previous, { ...note, x: Math.max(40, Math.min(note.x, 540)), y: Math.max(60, Math.min(note.y, 420)) }]);
   }, []);
 
   const moveNote = useCallback((id: string, x: number, y: number) => {
@@ -124,7 +141,13 @@ export default function App() {
       return;
     }
     setSelected((current) => current === id ? null : id);
+    setTopZIndexNoteId(id);
   }, [deleteMode, deleteNote]);
+
+  const bringToFront = useCallback((id: string) => {
+    setTopZIndexNoteId(id);
+    setSelected(id);
+  }, []);
 
   const hasNotes = notes.length > 0;
 
@@ -136,7 +159,7 @@ export default function App() {
         <div className="absolute left-0 right-0 top-0 h-1 rounded-t-3xl" style={{ background: "linear-gradient(90deg, #bbb, #ddd, #bbb)" }} />
 
         <div className="absolute shadow-xl" style={{ top: 32, left: hasNotes ? 40 : "50%", transform: hasNotes ? "rotate(-3deg)" : "rotate(-3deg) translateX(-50%)", transition: "left 0.6s ease, transform 0.3s ease", zIndex: 5 }}>
-          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
+          <Magnet color="#EF5350" className="-top-2 h-3 w-3 shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
           <div className="px-8 py-6 shadow-md" style={{ background: "#FFF176", borderBottom: "3px solid #F9A825", fontFamily: "cursive", fontSize: hasNotes ? "1.5rem" : "2.8rem", transition: "font-size 0.4s ease", minWidth: hasNotes ? "160px" : "320px" }}>
             <div className="font-bold leading-tight text-gray-800">I&apos;m Board</div>
             <div className="mt-1 text-gray-500" style={{ fontSize: "0.7em" }}>:)</div>
@@ -145,16 +168,81 @@ export default function App() {
 
         {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400" style={{ fontFamily: "cursive" }}>Ideas live here</p></div>}
 
-        {notes.map((note) => <StickyNote key={note.id} note={note} onDelete={deleteNote} onMove={moveNote} selected={selected === note.id} onClick={handleNoteClick} deleteMode={deleteMode} />)}
+        {notes.map((note) => (
+          <StickyNote
+            key={note.id}
+            note={note}
+            onDelete={deleteNote}
+            onMove={moveNote}
+            selected={selected === note.id}
+            onClick={handleNoteClick}
+            deleteMode={deleteMode}
+            isTopMost={topZIndexNoteId === note.id}
+            onBringToFront={bringToFront}
+          />
+        ))}
       </div>
 
       <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowModal(true)} className="group absolute right-10 top-8 z-30 transition-transform hover:scale-110 active:scale-95" title="Add note" aria-label="Add note">
         <div className="relative h-14 w-14"><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#C8E6C9", transform: "rotate(8deg) translate(2px, 3px)" }} /><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#BBDEFB", transform: "rotate(-5deg) translate(-2px, 2px)" }} /><div className="absolute inset-0 flex items-center justify-center rounded-md border-2 shadow-lg" style={{ background: "#FFF176", borderColor: "#F9A825" }}><span className="text-2xl font-bold leading-none text-gray-700">+</span></div></div>
       </button>
 
-      <button type="button" onClick={() => setDeleteMode((active) => !active)} className="absolute bottom-10 right-10 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-110 active:scale-95" style={{ background: deleteMode ? "#EF5350" : "#fff", border: deleteMode ? "2px solid #c62828" : "2px solid #ddd" }} title={deleteMode ? "Click a note to delete it" : "Delete mode"} aria-label="Toggle delete mode">🗑️</button>
+      <button
+        type="button"
+        onClick={() => {
+          setDeleteMode(false);
+          setShowTrashPanel((current) => !current);
+        }}
+        className="absolute bottom-10 right-10 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-110 active:scale-95"
+        style={{ background: showTrashPanel ? "#EF5350" : "#fff", border: showTrashPanel ? "2px solid #c62828" : "2px solid #ddd" }}
+        title="Recently deleted notes"
+        aria-label="Open recently deleted notes"
+      >
+        🗑️
+      </button>
 
-      {deleteMode && <div className="absolute bottom-28 right-4 z-30 rounded-xl bg-red-400 px-3 py-2 text-sm text-white shadow">Click a note to delete it</div>}
+      {showTrashPanel && (
+        <div className="absolute bottom-28 right-4 z-40 w-72 rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-gray-700">Recently deleted</span>
+            <button type="button" onClick={() => setShowTrashPanel(false)} className="text-xl text-gray-400 hover:text-gray-600" aria-label="Close deleted notes">×</button>
+          </div>
+
+          {deletedNotes.length === 0 ? (
+            <p className="text-sm text-gray-500">No recently deleted notes.</p>
+          ) : (
+            <div className="space-y-3">
+              {deletedNotes.map((note) => (
+                <div key={note.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-2">
+                  <div className="h-10 w-10 overflow-hidden rounded-md border border-gray-300 bg-white/80 p-1">
+                    {note.mode === "draw" && note.drawingData ? (
+                      <img src={note.drawingData} alt="Deleted drawing preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-600" style={{ background: NOTE_COLORS[note.color], fontFamily: "cursive" }}>
+                        {note.content.slice(0, 12) || "Note"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-xs font-semibold text-gray-700">{note.mode === "draw" ? "Drawing" : note.content || "Empty note"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      restoreNote(note);
+                      setShowTrashPanel(false);
+                    }}
+                    className="rounded-lg bg-green-500 px-2 py-1 text-xs font-bold text-white shadow hover:bg-green-600"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {showModal && <AddNoteModal onClose={() => setShowModal(false)} onAdd={addNote} />}
       <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_60px_rgba(0,0,0,0.15)]" />
     </div>

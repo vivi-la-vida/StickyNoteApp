@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Magnet } from "./Magnet";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
 export type NoteMode = "type" | "draw";
@@ -27,17 +28,15 @@ export const NOTE_BORDER: Record<NoteColor, string> = {
   green: "#66BB6A", purple: "#AB47BC", orange: "#FFA726",
 };
 
-function Magnet({ color }: { color: string }) {
-  return <div className="absolute -top-3 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white/60 shadow-md" style={{ background: `radial-gradient(circle at 35% 35%, white 0%, ${color} 50%, ${color}cc 100%)` }} />;
-}
-
-export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMode }: {
+export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMode, isTopMost, onBringToFront }: {
   note: Note;
   onDelete: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
   selected: boolean;
   onClick: (id: string) => void;
   deleteMode: boolean;
+  isTopMost: boolean;
+  onBringToFront: (id: string) => void;
 }) {
   const dragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -45,6 +44,7 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (deleteMode) return;
+    onBringToFront(note.id);
     event.currentTarget.setPointerCapture(event.pointerId);
     dragging.current = true;
     didMove.current = false;
@@ -67,7 +67,7 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
   return (
     <div
       className="group absolute"
-      style={{ left: note.x, top: note.y, transform: `rotate(${note.rotation}deg)`, zIndex: selected ? 20 : 10, cursor: deleteMode ? "pointer" : "grab", touchAction: "none" }}
+      style={{ left: note.x, top: note.y, transform: `rotate(${note.rotation}deg)`, zIndex: isTopMost ? 30 : selected ? 20 : 10, cursor: deleteMode ? "pointer" : "grab", touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -80,7 +80,22 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
       >
         {note.mode === "draw" && note.drawingData ? <img src={note.drawingData} alt="Drawing" className="h-full w-full object-contain" draggable={false} /> : <p className="break-words overflow-hidden text-sm leading-snug text-gray-700">{note.content}</p>}
       </div>
-      <button type="button" className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow group-hover:flex" onClick={(event) => { event.stopPropagation(); onDelete(note.id); }} aria-label="Delete note" title="Delete note">x</button>
+      <button
+        type="button"
+        className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow transition-opacity hover:scale-110 group-hover:flex"
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(note.id);
+        }}
+        aria-label="Delete note"
+        title="Delete note"
+      >
+        x
+      </button>
     </div>
   );
 }
