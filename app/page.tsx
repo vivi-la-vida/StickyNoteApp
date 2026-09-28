@@ -10,6 +10,7 @@ import {
   type NoteColor,
   type NoteMode,
 } from "./components/StickyNote";
+import { Magnet } from "./components/Magnet";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
 const MAGNET_COLORS = ["#EF5350", "#42A5F5", "#66BB6A", "#FFD54F", "#AB47BC", "#FF7043"];
@@ -93,6 +94,7 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [topZIndexNoteId, setTopZIndexNoteId] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback((partial: Omit<Note, "id" | "x" | "y" | "rotation" | "magnetColor">) => {
@@ -124,7 +126,13 @@ export default function App() {
       return;
     }
     setSelected((current) => current === id ? null : id);
+    setTopZIndexNoteId(id);
   }, [deleteMode, deleteNote]);
+
+  const bringToFront = useCallback((id: string) => {
+    setTopZIndexNoteId(id);
+    setSelected(id);
+  }, []);
 
   const hasNotes = notes.length > 0;
 
@@ -136,7 +144,7 @@ export default function App() {
         <div className="absolute left-0 right-0 top-0 h-1 rounded-t-3xl" style={{ background: "linear-gradient(90deg, #bbb, #ddd, #bbb)" }} />
 
         <div className="absolute shadow-xl" style={{ top: 32, left: hasNotes ? 40 : "50%", transform: hasNotes ? "rotate(-3deg)" : "rotate(-3deg) translateX(-50%)", transition: "left 0.6s ease, transform 0.3s ease", zIndex: 5 }}>
-          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
+          <Magnet color="#EF5350" className="-top-2 h-3 w-3 shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
           <div className="px-8 py-6 shadow-md" style={{ background: "#FFF176", borderBottom: "3px solid #F9A825", fontFamily: "cursive", fontSize: hasNotes ? "1.5rem" : "2.8rem", transition: "font-size 0.4s ease", minWidth: hasNotes ? "160px" : "320px" }}>
             <div className="font-bold leading-tight text-gray-800">I&apos;m Board</div>
             <div className="mt-1 text-gray-500" style={{ fontSize: "0.7em" }}>:)</div>
@@ -145,7 +153,19 @@ export default function App() {
 
         {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400" style={{ fontFamily: "cursive" }}>Ideas live here</p></div>}
 
-        {notes.map((note) => <StickyNote key={note.id} note={note} onDelete={deleteNote} onMove={moveNote} selected={selected === note.id} onClick={handleNoteClick} deleteMode={deleteMode} />)}
+        {notes.map((note) => (
+          <StickyNote
+            key={note.id}
+            note={note}
+            onDelete={deleteNote}
+            onMove={moveNote}
+            selected={selected === note.id}
+            onClick={handleNoteClick}
+            deleteMode={deleteMode}
+            isTopMost={topZIndexNoteId === note.id}
+            onBringToFront={bringToFront}
+          />
+        ))}
       </div>
 
       <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowModal(true)} className="group absolute right-10 top-8 z-30 transition-transform hover:scale-110 active:scale-95" title="Add note" aria-label="Add note">
