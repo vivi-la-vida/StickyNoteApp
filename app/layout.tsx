@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stick It!",
+  title: "I'm Board",
   description: "A fun little sticky notes board",
 };
 
