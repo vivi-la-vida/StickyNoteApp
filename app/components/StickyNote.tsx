@@ -80,7 +80,22 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
       >
         {note.mode === "draw" && note.drawingData ? <img src={note.drawingData} alt="Drawing" className="h-full w-full object-contain" draggable={false} /> : <p className="break-words overflow-hidden text-sm leading-snug text-gray-700">{note.content}</p>}
       </div>
-      <button type="button" className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow group-hover:flex" onClick={(event) => { event.stopPropagation(); onDelete(note.id); }} aria-label="Delete note" title="Delete note">x</button>
+      <button
+        type="button"
+        className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-400 text-xs text-white shadow transition-opacity hover:scale-110 group-hover:flex"
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(note.id);
+        }}
+        aria-label="Delete note"
+        title="Delete note"
+      >
+        x
+      </button>
     </div>
   );
 }
