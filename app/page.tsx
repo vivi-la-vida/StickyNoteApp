@@ -75,7 +75,7 @@ function AddNoteModal({
 
         {mode === "type" ? (
           <>
-            <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none" style={{ background: NOTE_COLORS[color], fontFamily: "cursive", borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
+            <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none patrick-hand-text" style={{ background: NOTE_COLORS[color], borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
             <button type="submit" disabled={!text.trim()} className="mt-3 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
           </>
         ) : (
@@ -161,12 +161,12 @@ export default function App() {
         <div className="absolute shadow-xl" style={{ top: 32, left: hasNotes ? 40 : "50%", transform: hasNotes ? "rotate(-3deg)" : "rotate(-3deg) translateX(-50%)", transition: "left 0.6s ease, transform 0.3s ease", zIndex: 5 }}>
           <Magnet color="#EF5350" className="-top-2 h-3 w-3 shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
           <div className="px-8 py-6 shadow-md" style={{ background: "#FFF176", borderBottom: "3px solid #F9A825", fontFamily: "cursive", fontSize: hasNotes ? "1.5rem" : "2.8rem", transition: "font-size 0.4s ease", minWidth: hasNotes ? "160px" : "320px" }}>
-            <div className="font-bold leading-tight text-gray-800">I&apos;m Board</div>
-            <div className="mt-1 text-gray-500" style={{ fontSize: "0.7em" }}>:)</div>
+            <div className="font-bold leading-tight text-gray-800 patrick-hand-text">I&apos;m Board</div>
+            <div className="mt-1 text-gray-500 patrick-hand-text" style={{ fontSize: "0.7em" }}>:)</div>
           </div>
         </div>
 
-        {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400" style={{ fontFamily: "cursive" }}>Ideas live here</p></div>}
+        {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400 patrick-hand-text">Ideas live here</p></div>}
 
         {notes.map((note) => (
           <StickyNote
