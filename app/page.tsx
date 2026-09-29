@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  DrawingCanvas,
   NOTE_BORDER,
   NOTE_COLORS,
   STICKY_NOTE_SIZE,
@@ -10,6 +9,7 @@ import {
   type NoteColor,
   type NoteMode,
 } from "./components/StickyNote";
+import DrawingTab from "@/app/components/DrawingTab";
 import Board from "@/app/components/Board";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
@@ -127,9 +127,7 @@ function AddNoteModal({
           <button type="submit" disabled={!text.trim()} className="mt-3 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
         </div>
 
-        <div hidden={mode !== "draw"}>
-          <DrawingCanvas color={color} onSave={saveDrawing} />
-        </div>
+        <DrawingTab active={mode === "draw"} color={color} onSave={saveDrawing} />
 
         <div hidden={mode !== "gif"}>
           <div className="flex gap-2">
