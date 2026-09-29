@@ -8,9 +8,9 @@ Capturing an idea should take only a moment, and reviewing several ideas at once
 
 ## Primary User Flow
 
-1. Open the board and choose the add-note button.
+1. Open the board and choose the add-note button in the top right.
 2. Choose a note color and whether to type, draw, or search GIPHY for a GIF.
-3. Add the note to the board, then drag it into place.
+3. Add the note to the board, then drag it anywhere you want on the board.
 4. Delete notes when they are no longer needed; restore a recently deleted note from the trash panel.
 
 Notes and the recently deleted list are saved in the browser, so they remain available on that browser between visits.
@@ -66,8 +66,11 @@ Visit [https://sticky-note-app-rho.vercel.app/](https://sticky-note-app-rho.verc
 
 ## What to Improve Next
 
-- Drawing on the sticky note is pretty limited: add an undo button so you don't have to erase an entire drawing, allow a variety of colors.
 - Add right mouse click option that allows you to add a new note with the options of "new note, new drawing, new gif".
 - Allow users to edit the sticky note after creating it, such as the color and text.
+- Dragging a sticky note to the trash can should delete the sticky note.
 - Improve mobile and keyboard accessibility for creating, selecting, and moving notes.
 - Add clearer empty, loading, and retry states for GIF search and image failures.
+- Deleting all the notes does not reset the board, potentially add a reset all option.
+- Add more variety in pen colors in the Drawing Tab.
+- Make the design look more like a refrigerator.
