@@ -50,7 +50,11 @@ The GIF picker searches GIPHY and lets the user add a result as a visual note. T
 	npm run dev
 	```
 
-4. Visit [http://localhost:3000](http://localhost:3000).
+4. Visit [http://localhost:3000/](http://localhost:3000/).
+
+## Deployed Site
+
+Visit [https://sticky-note-app-rho.vercel.app/](https://sticky-note-app-rho.vercel.app/).
 
 ## Known Limitations
 
@@ -62,7 +66,8 @@ The GIF picker searches GIPHY and lets the user add a result as a visual note. T
 
 ## What to Improve Next
 
-- Add export/import or account-backed sync so notes can be backed up and shared across devices.
-- Add board controls to arrange, zoom, and navigate larger collections of notes.
+- Drawing on the sticky note is pretty limited: add an undo button so you don't have to erase an entire drawing, allow a variety of colors.
+- Add right mouse click option that allows you to add a new note with the options of "new note, new drawing, new gif".
+- Allow users to edit the sticky note after creating it, such as the color and text.
 - Improve mobile and keyboard accessibility for creating, selecting, and moving notes.
 - Add clearer empty, loading, and retry states for GIF search and image failures.
