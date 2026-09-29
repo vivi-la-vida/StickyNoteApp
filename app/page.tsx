@@ -139,7 +139,7 @@ function AddNoteModal({
               onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchGifs(); } }}
               placeholder="Search GIFs"
               aria-label="Search GIFs"
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 outline-none placeholder:text-gray-300 focus:border-gray-400"
             />
             <button type="button" onClick={() => void searchGifs()} disabled={!gifQuery.trim() || gifLoading} className="rounded-lg px-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: NOTE_BORDER[color] }}>
               {gifLoading ? "..." : "Search"}

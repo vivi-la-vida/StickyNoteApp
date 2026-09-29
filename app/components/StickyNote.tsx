@@ -169,7 +169,7 @@ export function DrawingCanvas({ color, onSave }: { color: NoteColor; onSave: (da
   return <div className="flex flex-col gap-3">
     <canvas ref={canvasRef} width={280} height={240} className="w-full rounded-lg border-2 border-dashed" style={{ background: NOTE_COLORS[color], borderColor: NOTE_BORDER[color], touchAction: "none", cursor: "crosshair" }} onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
     <div className="flex items-center justify-between gap-3">
-      <div className="flex gap-2"><button type="button" className="rounded-lg p-2 text-sm text-gray-900 disabled:opacity-40" onClick={undo} disabled={undoCount === 0} title="Undo last stroke">Undo</button></div>
+      <div className="flex gap-2"><button type="button" className="rounded-lg p-2 text-sm text-gray-500 disabled:opacity-40" onClick={undo} disabled={undoCount === 0} title="Undo last stroke">Undo</button></div>
       <div className="flex items-center gap-2">{[2, 4, 7].map((size) => <button type="button" key={size} onClick={() => setPenSize(size)} className={`rounded-full bg-gray-700 ${penSize === size ? "ring-2 ring-gray-400" : ""}`} style={{ width: size * 3 + 4, height: size * 3 + 4 }} title={`${size}px pen`} />)}</div>
       <button type="button" className="rounded-xl px-4 py-1.5 text-sm font-bold text-white shadow" style={{ background: NOTE_BORDER[color] }} onClick={() => { if (canvasRef.current) onSave(canvasRef.current.toDataURL()); }}>Paste it!</button>
     </div>
