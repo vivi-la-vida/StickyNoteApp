@@ -5,6 +5,7 @@ import {
   DrawingCanvas,
   NOTE_BORDER,
   NOTE_COLORS,
+  STICKY_NOTE_SIZE,
   type Note,
   type NoteColor,
   type NoteMode,
@@ -17,6 +18,20 @@ const STORAGE_KEY = "sticky-note-board-notes";
 const DELETED_STORAGE_KEY = "sticky-note-board-deleted";
 
 type GiphyResult = { id: string; title: string; url: string };
+
+function keepNoteWithinBoard(note: Note, x: number, y: number, width: number, height: number) {
+  const radians = note.rotation * Math.PI / 180;
+  const rotatedOverflow = Math.ceil((Math.abs(Math.cos(radians)) + Math.abs(Math.sin(radians)) - 1) * STICKY_NOTE_SIZE / 2);
+  const minX = rotatedOverflow;
+  const maxX = Math.max(minX, width - STICKY_NOTE_SIZE - rotatedOverflow);
+  const minY = Math.min(12 + rotatedOverflow, Math.max(0, height - STICKY_NOTE_SIZE - rotatedOverflow));
+  const maxY = Math.max(minY, height - STICKY_NOTE_SIZE - rotatedOverflow);
+
+  return {
+    x: Math.max(minX, Math.min(x, maxX)),
+    y: Math.max(minY, Math.min(y, maxY)),
+  };
+}
 
 function randomBetween(min: number, max: number) {
   return min + Math.random() * Math.max(0, max - min);
@@ -219,11 +234,16 @@ export default function App() {
 
   const restoreNote = useCallback((note: Note) => {
     setDeletedNotes((current) => current.filter((deletedNote) => deletedNote.id !== note.id));
-    setNotes((previous) => [...previous, { ...note, x: Math.max(40, Math.min(note.x, 540)), y: Math.max(60, Math.min(note.y, 420)) }]);
+    const board = boardRef.current;
+    const position = keepNoteWithinBoard(note, note.x, note.y, board?.clientWidth ?? 700, board?.clientHeight ?? 600);
+    setNotes((previous) => [...previous, { ...note, ...position }]);
   }, []);
 
   const moveNote = useCallback((id: string, x: number, y: number) => {
-    setNotes((previous) => previous.map((note) => note.id === id ? { ...note, x, y } : note));
+    const board = boardRef.current;
+    const width = board?.clientWidth ?? 700;
+    const height = board?.clientHeight ?? 600;
+    setNotes((previous) => previous.map((note) => note.id === id ? { ...note, ...keepNoteWithinBoard(note, x, y, width, height) } : note));
   }, []);
 
   const handleNoteClick = useCallback((id: string) => {

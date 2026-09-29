@@ -5,6 +5,7 @@ import { Magnet } from "./Magnet";
 
 export type NoteColor = "yellow" | "pink" | "blue" | "green" | "purple" | "orange";
 export type NoteMode = "type" | "draw" | "gif";
+export const STICKY_NOTE_SIZE = 144;
 
 export interface Note {
   id: string;
@@ -49,14 +50,23 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
     event.currentTarget.setPointerCapture(event.pointerId);
     dragging.current = true;
     didMove.current = false;
-    dragOffset.current = { x: event.clientX - note.x, y: event.clientY - note.y };
+    const boardBounds = event.currentTarget.parentElement?.getBoundingClientRect();
+    dragOffset.current = {
+      x: event.clientX - (boardBounds?.left ?? 0) - note.x,
+      y: event.clientY - (boardBounds?.top ?? 0) - note.y,
+    };
     event.stopPropagation();
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging.current) return;
     didMove.current = true;
-    onMove(note.id, event.clientX - dragOffset.current.x, event.clientY - dragOffset.current.y);
+    const boardBounds = event.currentTarget.parentElement?.getBoundingClientRect();
+    onMove(
+      note.id,
+      event.clientX - (boardBounds?.left ?? 0) - dragOffset.current.x,
+      event.clientY - (boardBounds?.top ?? 0) - dragOffset.current.y,
+    );
   };
 
   const handlePointerUp = () => {
@@ -77,7 +87,7 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
       <Magnet color={note.magnetColor} />
       <div
         className="relative flex h-36 w-36 flex-col p-3 pt-4 shadow-lg transition-shadow duration-150 group-hover:shadow-xl"
-        style={{ background: NOTE_COLORS[note.color], borderBottom: `3px solid ${NOTE_BORDER[note.color]}`, borderRight: `2px solid ${NOTE_BORDER[note.color]}44`, fontFamily: '"Patrick Hand", cursive', boxShadow: selected ? `0 0 0 3px ${NOTE_BORDER[note.color]}, 0 12px 24px rgba(0,0,0,0.2)` : undefined }}
+        style={{ width: STICKY_NOTE_SIZE, height: STICKY_NOTE_SIZE, background: NOTE_COLORS[note.color], borderBottom: `3px solid ${NOTE_BORDER[note.color]}`, borderRight: `2px solid ${NOTE_BORDER[note.color]}44`, fontFamily: '"Patrick Hand", cursive', boxShadow: selected ? `0 0 0 3px ${NOTE_BORDER[note.color]}, 0 12px 24px rgba(0,0,0,0.2)` : undefined }}
       >
         {note.mode === "gif" && note.gifUrl ? <img src={note.gifUrl} alt="GIF" className="h-full w-full object-cover" draggable={false} /> : note.mode === "draw" && note.drawingData ? <img src={note.drawingData} alt="Drawing" className="h-full w-full object-contain" draggable={false} /> : <p className="break-words overflow-hidden text-sm leading-snug text-gray-700 patrick-hand-text">{note.content}</p>}
       </div>
