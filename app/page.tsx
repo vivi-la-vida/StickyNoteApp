@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DrawingCanvas,
   NOTE_BORDER,
@@ -14,6 +14,10 @@ import { Magnet } from "./components/Magnet";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
 const MAGNET_COLORS = ["#EF5350", "#42A5F5", "#66BB6A", "#FFD54F", "#AB47BC", "#FF7043"];
+const STORAGE_KEY = "sticky-note-board-notes";
+const DELETED_STORAGE_KEY = "sticky-note-board-deleted";
+
+type GiphyResult = { id: string; title: string; url: string };
 
 function randomBetween(min: number, max: number) {
   return min + Math.random() * Math.max(0, max - min);
@@ -29,12 +33,43 @@ function AddNoteModal({
   const [color, setColor] = useState<NoteColor>("yellow");
   const [mode, setMode] = useState<NoteMode>("type");
   const [text, setText] = useState("");
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifResults, setGifResults] = useState<GiphyResult[]>([]);
+  const [selectedGif, setSelectedGif] = useState<GiphyResult | null>(null);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [gifError, setGifError] = useState("");
 
   const submit = (event?: React.FormEvent) => {
     event?.preventDefault();
     if (mode === "type" && !text.trim()) return;
+    if (mode === "gif") {
+      if (!selectedGif) return;
+      onAdd({ color, content: "", gifUrl: selectedGif.url, mode: "gif" });
+      onClose();
+      return;
+    }
     onAdd({ color, content: text.trim(), mode });
     onClose();
+  };
+
+  const searchGifs = async () => {
+    const query = gifQuery.trim();
+    if (!query) return;
+
+    setGifLoading(true);
+    setGifError("");
+    setGifResults([]);
+    setSelectedGif(null);
+    try {
+      const response = await fetch(`/api/giphy?q=${encodeURIComponent(query)}`);
+      const payload = await response.json() as { gifs?: GiphyResult[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "GIF search failed.");
+      setGifResults(payload.gifs ?? []);
+    } catch (error) {
+      setGifError(error instanceof Error ? error.message : "GIF search failed.");
+    } finally {
+      setGifLoading(false);
+    }
   };
 
   const saveDrawing = (drawingData: string) => {
@@ -66,20 +101,47 @@ function AddNoteModal({
         </div>
 
         <div className="mb-4 flex overflow-hidden rounded-xl border border-gray-200">
-          {(["type", "draw"] as NoteMode[]).map((option) => (
+          {(["type", "draw", "gif"] as NoteMode[]).map((option) => (
             <button type="button" key={option} onClick={() => setMode(option)} className="flex-1 py-2 text-sm font-semibold" style={{ background: mode === option ? NOTE_COLORS[color] : "white", color: mode === option ? "#555" : "#aaa" }}>
-              {option === "type" ? "Type" : "Draw"}
+              {option === "type" ? "Type" : option === "draw" ? "Draw" : "GIF"}
             </button>
           ))}
         </div>
 
         {mode === "type" ? (
           <>
-            <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none" style={{ background: NOTE_COLORS[color], fontFamily: "cursive", borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
+            <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none patrick-hand-text" style={{ background: NOTE_COLORS[color], borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
             <button type="submit" disabled={!text.trim()} className="mt-3 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
           </>
         ) : (
-          <DrawingCanvas color={color} onSave={saveDrawing} />
+          mode === "draw" ? <DrawingCanvas color={color} onSave={saveDrawing} /> : (
+            <div>
+              <div className="flex gap-2">
+                <input
+                  value={gifQuery}
+                  onChange={(event) => setGifQuery(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchGifs(); } }}
+                  placeholder="Search GIFs"
+                  aria-label="Search GIFs"
+                  className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+                />
+                <button type="button" onClick={() => void searchGifs()} disabled={!gifQuery.trim() || gifLoading} className="rounded-lg px-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: NOTE_BORDER[color] }}>
+                  {gifLoading ? "..." : "Search"}
+                </button>
+              </div>
+              <div className="mt-3 grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
+                {gifResults.map((gif) => (
+                  <button type="button" key={gif.id} onClick={() => setSelectedGif(gif)} aria-label={`Select ${gif.title || "GIF"}`} aria-pressed={selectedGif?.id === gif.id} className="aspect-square overflow-hidden rounded-md border-2 bg-gray-100" style={{ borderColor: selectedGif?.id === gif.id ? NOTE_BORDER[color] : "transparent" }}>
+                    <img src={gif.url} alt={gif.title || "GIF result"} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 min-h-5 text-xs text-gray-500" role="status">
+                {gifError || (gifLoading ? "Searching..." : gifResults.length === 0 ? "Search GIPHY to choose a GIF." : "Powered by GIPHY")}
+              </p>
+              <button type="submit" disabled={!selectedGif} className="mt-1 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
+            </div>
+          )
         )}
       </form>
     </div>
@@ -97,7 +159,40 @@ export default function App() {
   const [deleteMode, setDeleteMode] = useState(false);
   const [showTrashPanel, setShowTrashPanel] = useState(false);
   const [topZIndexNoteId, setTopZIndexNoteId] = useState<string | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const savedNotes = localStorage.getItem(STORAGE_KEY);
+      const savedDeletedNotes = localStorage.getItem(DELETED_STORAGE_KEY);
+
+      if (savedNotes) {
+        const parsedNotes = JSON.parse(savedNotes) as Note[];
+        if (Array.isArray(parsedNotes)) setNotes(parsedNotes);
+      }
+
+      if (savedDeletedNotes) {
+        const parsedDeletedNotes = JSON.parse(savedDeletedNotes) as Note[];
+        if (Array.isArray(parsedDeletedNotes)) setDeletedNotes(parsedDeletedNotes);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(DELETED_STORAGE_KEY);
+    } finally {
+      setHasHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  }, [notes, hasHydrated]);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(deletedNotes));
+  }, [deletedNotes, hasHydrated]);
 
   const addNote = useCallback((partial: Omit<Note, "id" | "x" | "y" | "rotation" | "magnetColor">) => {
     const board = boardRef.current;
@@ -161,12 +256,12 @@ export default function App() {
         <div className="absolute shadow-xl" style={{ top: 32, left: hasNotes ? 40 : "50%", transform: hasNotes ? "rotate(-3deg)" : "rotate(-3deg) translateX(-50%)", transition: "left 0.6s ease, transform 0.3s ease", zIndex: 5 }}>
           <Magnet color="#EF5350" className="-top-2 h-3 w-3 shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
           <div className="px-8 py-6 shadow-md" style={{ background: "#FFF176", borderBottom: "3px solid #F9A825", fontFamily: "cursive", fontSize: hasNotes ? "1.5rem" : "2.8rem", transition: "font-size 0.4s ease", minWidth: hasNotes ? "160px" : "320px" }}>
-            <div className="font-bold leading-tight text-gray-800">I&apos;m Board</div>
-            <div className="mt-1 text-gray-500" style={{ fontSize: "0.7em" }}>:)</div>
+            <div className="font-bold leading-tight text-gray-800 patrick-hand-text">I&apos;m Board</div>
+            <div className="mt-1 text-gray-500 patrick-hand-text" style={{ fontSize: "0.7em" }}>:)</div>
           </div>
         </div>
 
-        {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400" style={{ fontFamily: "cursive" }}>Ideas live here</p></div>}
+        {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400 patrick-hand-text">Ideas live here</p></div>}
 
         {notes.map((note) => (
           <StickyNote
@@ -215,7 +310,9 @@ export default function App() {
               {deletedNotes.map((note) => (
                 <div key={note.id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-2">
                   <div className="h-10 w-10 overflow-hidden rounded-md border border-gray-300 bg-white/80 p-1">
-                    {note.mode === "draw" && note.drawingData ? (
+                    {note.mode === "gif" && note.gifUrl ? (
+                      <img src={note.gifUrl} alt="Deleted GIF preview" className="h-full w-full object-cover" />
+                    ) : note.mode === "draw" && note.drawingData ? (
                       <img src={note.drawingData} alt="Deleted drawing preview" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-600" style={{ background: NOTE_COLORS[note.color], fontFamily: "cursive" }}>
