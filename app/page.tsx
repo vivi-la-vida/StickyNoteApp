@@ -122,41 +122,41 @@ function AddNoteModal({
           ))}
         </div>
 
-        {mode === "type" ? (
-          <>
-            <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none patrick-hand-text" style={{ background: NOTE_COLORS[color], borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
-            <button type="submit" disabled={!text.trim()} className="mt-3 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
-          </>
-        ) : (
-          mode === "draw" ? <DrawingCanvas color={color} onSave={saveDrawing} /> : (
-            <div>
-              <div className="flex gap-2">
-                <input
-                  value={gifQuery}
-                  onChange={(event) => setGifQuery(event.target.value)}
-                  onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchGifs(); } }}
-                  placeholder="Search GIFs"
-                  aria-label="Search GIFs"
-                  className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
-                />
-                <button type="button" onClick={() => void searchGifs()} disabled={!gifQuery.trim() || gifLoading} className="rounded-lg px-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: NOTE_BORDER[color] }}>
-                  {gifLoading ? "..." : "Search"}
-                </button>
-              </div>
-              <div className="mt-3 grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
-                {gifResults.map((gif) => (
-                  <button type="button" key={gif.id} onClick={() => setSelectedGif(gif)} aria-label={`Select ${gif.title || "GIF"}`} aria-pressed={selectedGif?.id === gif.id} className="aspect-square overflow-hidden rounded-md border-2 bg-gray-100" style={{ borderColor: selectedGif?.id === gif.id ? NOTE_BORDER[color] : "transparent" }}>
-                    <img src={gif.url} alt={gif.title || "GIF result"} className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 min-h-5 text-xs text-gray-500" role="status">
-                {gifError || (gifLoading ? "Searching..." : gifResults.length === 0 ? "Search GIPHY to choose a GIF." : "Powered by GIPHY")}
-              </p>
-              <button type="submit" disabled={!selectedGif} className="mt-1 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
-            </div>
-          )
-        )}
+        <div hidden={mode !== "type"}>
+          <textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="Type here..." className="h-40 w-full resize-none rounded-xl p-4 text-sm leading-relaxed text-gray-700 outline-none patrick-hand-text" style={{ background: NOTE_COLORS[color], borderBottom: `3px solid ${NOTE_BORDER[color]}` }} />
+          <button type="submit" disabled={!text.trim()} className="mt-3 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
+        </div>
+
+        <div hidden={mode !== "draw"}>
+          <DrawingCanvas color={color} onSave={saveDrawing} />
+        </div>
+
+        <div hidden={mode !== "gif"}>
+          <div className="flex gap-2">
+            <input
+              value={gifQuery}
+              onChange={(event) => setGifQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchGifs(); } }}
+              placeholder="Search GIFs"
+              aria-label="Search GIFs"
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 outline-none placeholder:text-gray-300 focus:border-gray-400"
+            />
+            <button type="button" onClick={() => void searchGifs()} disabled={!gifQuery.trim() || gifLoading} className="rounded-lg px-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: NOTE_BORDER[color] }}>
+              {gifLoading ? "..." : "Search"}
+            </button>
+          </div>
+          <div className="mt-3 grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
+            {gifResults.map((gif) => (
+              <button type="button" key={gif.id} onClick={() => setSelectedGif(gif)} aria-label={`Select ${gif.title || "GIF"}`} aria-pressed={selectedGif?.id === gif.id} className="aspect-square overflow-hidden rounded-md border-2 bg-gray-100" style={{ borderColor: selectedGif?.id === gif.id ? NOTE_BORDER[color] : "transparent" }}>
+                <img src={gif.url} alt={gif.title || "GIF result"} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 min-h-5 text-xs text-gray-500" role="status">
+            {gifError || (gifLoading ? "Searching..." : gifResults.length === 0 ? "Search GIPHY to choose a GIF." : "Powered by GIPHY")}
+          </p>
+          <button type="submit" disabled={!selectedGif} className="mt-1 w-full rounded-xl py-2 font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: NOTE_BORDER[color] }}>Paste it!</button>
+        </div>
       </form>
     </div>
   );
