@@ -5,12 +5,12 @@ import {
   DrawingCanvas,
   NOTE_BORDER,
   NOTE_COLORS,
-  StickyNote,
+  STICKY_NOTE_SIZE,
   type Note,
   type NoteColor,
   type NoteMode,
 } from "./components/StickyNote";
-import { Magnet } from "./components/Magnet";
+import Board from "@/app/components/Board";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
 const MAGNET_COLORS = ["#EF5350", "#42A5F5", "#66BB6A", "#FFD54F", "#AB47BC", "#FF7043"];
@@ -18,6 +18,20 @@ const STORAGE_KEY = "sticky-note-board-notes";
 const DELETED_STORAGE_KEY = "sticky-note-board-deleted";
 
 type GiphyResult = { id: string; title: string; url: string };
+
+function keepNoteWithinBoard(note: Note, x: number, y: number, width: number, height: number) {
+  const radians = note.rotation * Math.PI / 180;
+  const rotatedOverflow = Math.ceil((Math.abs(Math.cos(radians)) + Math.abs(Math.sin(radians)) - 1) * STICKY_NOTE_SIZE / 2);
+  const minX = rotatedOverflow;
+  const maxX = Math.max(minX, width - STICKY_NOTE_SIZE - rotatedOverflow);
+  const minY = Math.min(12 + rotatedOverflow, Math.max(0, height - STICKY_NOTE_SIZE - rotatedOverflow));
+  const maxY = Math.max(minY, height - STICKY_NOTE_SIZE - rotatedOverflow);
+
+  return {
+    x: Math.max(minX, Math.min(x, maxX)),
+    y: Math.max(minY, Math.min(y, maxY)),
+  };
+}
 
 function randomBetween(min: number, max: number) {
   return min + Math.random() * Math.max(0, max - min);
@@ -148,9 +162,6 @@ function AddNoteModal({
   );
 }
 
-const FRIDGE_BG = "radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.7) 0%, transparent 50%), linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 30%, #c8c8c8 50%, #d8d8d8 70%, #e0e0e0 100%)";
-const FRIDGE_LINES = "repeating-linear-gradient(90deg, transparent, transparent 119px, rgba(255,255,255,0.3) 120px, transparent 121px)";
-
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
@@ -223,11 +234,16 @@ export default function App() {
 
   const restoreNote = useCallback((note: Note) => {
     setDeletedNotes((current) => current.filter((deletedNote) => deletedNote.id !== note.id));
-    setNotes((previous) => [...previous, { ...note, x: Math.max(40, Math.min(note.x, 540)), y: Math.max(60, Math.min(note.y, 420)) }]);
+    const board = boardRef.current;
+    const position = keepNoteWithinBoard(note, note.x, note.y, board?.clientWidth ?? 700, board?.clientHeight ?? 600);
+    setNotes((previous) => [...previous, { ...note, ...position }]);
   }, []);
 
   const moveNote = useCallback((id: string, x: number, y: number) => {
-    setNotes((previous) => previous.map((note) => note.id === id ? { ...note, x, y } : note));
+    const board = boardRef.current;
+    const width = board?.clientWidth ?? 700;
+    const height = board?.clientHeight ?? 600;
+    setNotes((previous) => previous.map((note) => note.id === id ? { ...note, ...keepNoteWithinBoard(note, x, y, width, height) } : note));
   }, []);
 
   const handleNoteClick = useCallback((id: string) => {
@@ -244,39 +260,20 @@ export default function App() {
     setSelected(id);
   }, []);
 
-  const hasNotes = notes.length > 0;
-
   return (
     <div className="relative h-screen w-screen select-none overflow-hidden">
-      <div ref={boardRef} className="absolute inset-4 overflow-hidden rounded-3xl shadow-2xl" style={{ background: FRIDGE_BG }} onClick={() => setSelected(null)}>
-        <div className="absolute inset-0 opacity-40" style={{ background: FRIDGE_LINES }} />
-        <div className="absolute right-7 top-1/2 h-32 w-3 -translate-y-1/2 rounded-full shadow-inner" style={{ background: "linear-gradient(90deg, #aaa 0%, #e0e0e0 40%, #aaa 60%, #888 100%)" }} />
-        <div className="absolute left-0 right-0 top-0 h-1 rounded-t-3xl" style={{ background: "linear-gradient(90deg, #bbb, #ddd, #bbb)" }} />
-
-        <div className="absolute shadow-xl" style={{ top: 32, left: hasNotes ? 40 : "50%", transform: hasNotes ? "rotate(-3deg)" : "rotate(-3deg) translateX(-50%)", transition: "left 0.6s ease, transform 0.3s ease", zIndex: 5 }}>
-          <Magnet color="#EF5350" className="-top-2 h-3 w-3 shadow" style={{ background: "radial-gradient(circle at 35% 35%, white, #EF5350)" }} />
-          <div className="px-8 py-6 shadow-md" style={{ background: "#FFF176", borderBottom: "3px solid #F9A825", fontFamily: "cursive", fontSize: hasNotes ? "1.5rem" : "2.8rem", transition: "font-size 0.4s ease", minWidth: hasNotes ? "160px" : "320px" }}>
-            <div className="font-bold leading-tight text-gray-800 patrick-hand-text">I&apos;m Board</div>
-            <div className="mt-1 text-gray-500 patrick-hand-text" style={{ fontSize: "0.7em" }}>:)</div>
-          </div>
-        </div>
-
-        {!hasNotes && <div className="pointer-events-none absolute bottom-24 left-0 right-0 flex justify-center"><p className="text-lg text-gray-400 patrick-hand-text">Ideas live here</p></div>}
-
-        {notes.map((note) => (
-          <StickyNote
-            key={note.id}
-            note={note}
-            onDelete={deleteNote}
-            onMove={moveNote}
-            selected={selected === note.id}
-            onClick={handleNoteClick}
-            deleteMode={deleteMode}
-            isTopMost={topZIndexNoteId === note.id}
-            onBringToFront={bringToFront}
-          />
-        ))}
-      </div>
+      <Board
+        boardRef={boardRef}
+        notes={notes}
+        selected={selected}
+        topZIndexNoteId={topZIndexNoteId}
+        deleteMode={deleteMode}
+        onSelect={setSelected}
+        onDeleteNote={deleteNote}
+        onMoveNote={moveNote}
+        onNoteClick={handleNoteClick}
+        onBringToFront={bringToFront}
+      />
 
       <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowModal(true)} className="group absolute right-10 top-8 z-30 transition-transform hover:scale-110 active:scale-95" title="Add note" aria-label="Add note">
         <div className="relative h-14 w-14"><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#C8E6C9", transform: "rotate(8deg) translate(2px, 3px)" }} /><div className="absolute inset-0 rounded-md shadow-md" style={{ background: "#BBDEFB", transform: "rotate(-5deg) translate(-2px, 2px)" }} /><div className="absolute inset-0 flex items-center justify-center rounded-md border-2 shadow-lg" style={{ background: "#FFF176", borderColor: "#F9A825" }}><span className="text-2xl font-bold leading-none text-gray-700">+</span></div></div>
