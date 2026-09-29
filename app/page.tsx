@@ -10,7 +10,7 @@ import {
   type NoteColor,
   type NoteMode,
 } from "./components/StickyNote";
-import Board from "./components/Board";
+import Board from "@/app/components/Board";
 
 const COLOR_SWATCHES: NoteColor[] = ["yellow", "pink", "blue", "green", "purple", "orange"];
 const MAGNET_COLORS = ["#EF5350", "#42A5F5", "#66BB6A", "#FFD54F", "#AB47BC", "#FF7043"];
