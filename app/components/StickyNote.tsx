@@ -114,7 +114,8 @@ export function StickyNote({ note, onDelete, onMove, selected, onClick, deleteMo
 export function DrawingCanvas({ color, onSave }: { color: NoteColor; onSave: (data: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
-  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const undoHistory = useRef<ImageData[]>([]);
+  const [undoCount, setUndoCount] = useState(0);
   const [penSize, setPenSize] = useState(3);
 
   const position = (event: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
@@ -132,6 +133,9 @@ export function DrawingCanvas({ color, onSave }: { color: NoteColor; onSave: (da
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
+    undoHistory.current.push(context.getImageData(0, 0, canvas.width, canvas.height));
+    if (undoHistory.current.length > 20) undoHistory.current.shift();
+    setUndoCount(undoHistory.current.length);
     drawing.current = true;
     const point = position(event, canvas);
     context.beginPath();
@@ -143,21 +147,29 @@ export function DrawingCanvas({ color, onSave }: { color: NoteColor; onSave: (da
     const context = canvas?.getContext("2d");
     if (!drawing.current || !canvas || !context) return;
     const point = position(event, canvas);
-    context.lineWidth = tool === "eraser" ? penSize * 4 : penSize;
+    context.lineWidth = penSize;
     context.lineCap = "round";
-    context.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
     context.strokeStyle = "#333";
     context.lineTo(point.x, point.y);
     context.stroke();
-    context.globalCompositeOperation = "source-over";
   };
 
   const stop = () => { drawing.current = false; };
 
+  const undo = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    const previous = undoHistory.current.pop();
+    if (!canvas || !context || !previous) return;
+    drawing.current = false;
+    context.putImageData(previous, 0, 0);
+    setUndoCount(undoHistory.current.length);
+  };
+
   return <div className="flex flex-col gap-3">
-    <canvas ref={canvasRef} width={280} height={240} className="w-full rounded-lg border-2 border-dashed" style={{ background: NOTE_COLORS[color], borderColor: NOTE_BORDER[color], touchAction: "none", cursor: tool === "eraser" ? "cell" : "crosshair" }} onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
+    <canvas ref={canvasRef} width={280} height={240} className="w-full rounded-lg border-2 border-dashed" style={{ background: NOTE_COLORS[color], borderColor: NOTE_BORDER[color], touchAction: "none", cursor: "crosshair" }} onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
     <div className="flex items-center justify-between gap-3">
-      <div className="flex gap-2"><button type="button" onClick={() => setTool("pen")} className={`rounded-lg p-2 text-sm ${tool === "pen" ? "bg-gray-200 shadow-inner" : ""}`} title="Pen">Pen</button><button type="button" onClick={() => setTool("eraser")} className={`rounded-lg p-2 text-sm ${tool === "eraser" ? "bg-gray-200 shadow-inner" : ""}`} title="Eraser">Erase</button></div>
+      <div className="flex gap-2"><button type="button" className="rounded-lg p-2 text-sm text-gray-900 disabled:opacity-40" onClick={undo} disabled={undoCount === 0} title="Undo last stroke">Undo</button></div>
       <div className="flex items-center gap-2">{[2, 4, 7].map((size) => <button type="button" key={size} onClick={() => setPenSize(size)} className={`rounded-full bg-gray-700 ${penSize === size ? "ring-2 ring-gray-400" : ""}`} style={{ width: size * 3 + 4, height: size * 3 + 4 }} title={`${size}px pen`} />)}</div>
       <button type="button" className="rounded-xl px-4 py-1.5 text-sm font-bold text-white shadow" style={{ background: NOTE_BORDER[color] }} onClick={() => { if (canvasRef.current) onSave(canvasRef.current.toDataURL()); }}>Paste it!</button>
     </div>
